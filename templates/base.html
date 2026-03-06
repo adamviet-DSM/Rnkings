@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-50">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Iowa Basketball Rankings{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            iowa: { gold: '#FFCD00', black: '#000000' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .iowa-gradient { background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%); }
+    .gold-accent { border-color: #FFCD00; }
+    .btn-active { background-color: #FFCD00; color: #000; font-weight: 700; }
+    .btn-inactive { background-color: #fff; color: #374151; }
+    tr.highlight td { background-color: #fefce8; }
+  </style>
+</head>
+<body class="h-full flex flex-col">
+
+  <!-- Header -->
+  <header class="iowa-gradient shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-3">
+      <div class="w-10 h-10 bg-iowa-gold rounded-full flex items-center justify-center flex-shrink-0">
+        <span class="text-black font-black text-lg">🏀</span>
+      </div>
+      <div>
+        <h1 class="text-white text-xl font-black tracking-tight leading-none">
+          Iowa Basketball Rankings
+        </h1>
+        <p class="text-gray-400 text-xs mt-0.5">Youth Rankings — Updated on every page refresh</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main content -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="border-t border-gray-200 py-4 text-center text-gray-400 text-xs">
+    Iowa Basketball Rankings &mdash; Rankings recalculate on every page load
+  </footer>
+
+</body>
+</html>
