@@ -51,17 +51,19 @@ def get_available_seasons(games: list[dict]) -> list[str]:
     return sorted(seasons, key=season_sort_key, reverse=True)
 
 
-def build_team_meta(teams_raw: list[dict]) -> dict[str, dict]:
+def build_team_meta(teams_raw: list[dict]) -> dict[str, list[dict]]:
     """
-    Build a team_name → metadata dict from the Teams sheet.
-    If a team appears multiple times (multiple seasons), keep the last row
-    so the most recent metadata wins.
+    Build team_name → [metadata rows] dict.
+    A club can have teams at multiple grade levels (e.g. a 4th-grade and a 7th-grade
+    'Ankeny Eagles' are tracked separately via Age Group).
     """
-    meta: dict[str, dict] = {}
+    meta: dict[str, list[dict]] = {}
     for row in teams_raw:
         name = str(row.get("Team Name", "")).strip()
         if name:
-            meta[name] = row
+            if name not in meta:
+                meta[name] = []
+            meta[name].append(row)
     return meta
 
 
@@ -96,14 +98,33 @@ def calculate_rankings(
 
     # ── 1. Determine which teams are in-scope ────────────────────────────────
     def matches_filter(name: str) -> bool:
-        meta = teams_meta.get(name, {})
-        if gender and str(meta.get("Gender", "")).strip() != gender:
-            return False
-        if grade and str(meta.get("Age Group", "")).strip() != grade:
-            return False
-        if team_type and str(meta.get("Team Type", "")).strip() != team_type:
-            return False
-        return True
+        rows = teams_meta.get(name, [])
+        if not rows:
+            return not (gender or grade or team_type)
+        for m in rows:
+            ok = True
+            if gender and str(m.get("Gender", "")).strip() != gender:
+                ok = False
+            if ok and grade and str(m.get("Age Group", "")).strip() != grade:
+                ok = False
+            if ok and team_type and str(m.get("Team Type", "")).strip() != team_type:
+                ok = False
+            if ok:
+                return True
+        return False
+
+    def resolve_meta(name: str) -> dict:
+        """Return the metadata row matching the active filters, or first row."""
+        rows = teams_meta.get(name, [])
+        for m in rows:
+            if gender and str(m.get("Gender", "")).strip() != gender:
+                continue
+            if grade and str(m.get("Age Group", "")).strip() != grade:
+                continue
+            if team_type and str(m.get("Team Type", "")).strip() != team_type:
+                continue
+            return m
+        return rows[0] if rows else {}
 
     # ── 2. Filter games to the selected season ───────────────────────────────
     season_games = [
@@ -188,7 +209,7 @@ def calculate_rankings(
         games = eligible[team]
         wins = sum(1 for g in games if g["result"] == "W")
         losses = len(games) - wins
-        meta = teams_meta.get(team, {})
+        meta = resolve_meta(team)
 
         nat_w = sum(1 for g in games if g["result"] == "W" and g["tier"] == "National")
         reg_w = sum(1 for g in games if g["result"] == "W" and g["tier"] == "Regional")
@@ -224,9 +245,17 @@ def calculate_rankings(
 def get_filter_options(teams_raw: list[dict]) -> dict:
     """Return available filter values derived from the Teams sheet."""
     grade_order = ["3rd", "4th", "5th", "6th", "7th", "8th"]
-    grades_in_data = {str(t.get("Age Group", "")).strip() for t in teams_raw}
+    grades_in_data = {
+        str(t.get("Age Group", "")).strip()
+        for t in teams_raw
+        if t.get("Age Group") and str(t.get("Age Group", "")).strip() not in ("", "?")
+    }
     grades = [g for g in grade_order if g in grades_in_data]
 
-    genders = sorted({str(t.get("Gender", "")).strip() for t in teams_raw if t.get("Gender")})
+    genders = sorted({
+        str(t.get("Gender", "")).strip()
+        for t in teams_raw
+        if t.get("Gender") and str(t.get("Gender", "")).strip() not in ("", "?")
+    })
 
     return {"grades": grades, "genders": genders}
