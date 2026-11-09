@@ -1,36 +1,52 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-gray-50">
+<html lang="en" class="h-full">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}Iowa Basketball Rankings{% endblock %}</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
+    // Site palette: soft charcoal + muted honey gold. Change colors here.
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            iowa: { gold: '#FFCD00', black: '#000000' }
+            iowa: { gold: '#D4AF4F', black: '#2B2E33' },
+            // Muted golds replace Tailwind's bright yellows used on the page
+            yellow: {
+              50:  '#FAF5E8',
+              100: '#F3E8C8',
+              400: '#D4AF4F',
+              500: '#A9862E',
+              700: '#7A6120',
+            },
           }
         }
       }
     }
   </script>
   <style>
-    .iowa-gradient { background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%); }
-    .gold-accent { border-color: #FFCD00; }
-    .btn-active { background-color: #FFCD00; color: #000; font-weight: 700; }
+    :root {
+      --charcoal: #2B2E33;
+      --charcoal-light: #3A3E44;
+      --gold: #D4AF4F;
+      --page: #F7F5F0;
+    }
+    html, body { background-color: var(--page); }
+    .iowa-gradient { background: linear-gradient(135deg, var(--charcoal) 0%, var(--charcoal-light) 100%); }
+    .gold-accent { border-color: var(--gold); }
+    .btn-active { background-color: var(--gold); color: var(--charcoal); font-weight: 700; }
     .btn-inactive { background-color: #fff; color: #374151; }
-    tr.highlight td { background-color: #fefce8; }
+    tr.highlight td { background-color: #FAF5E8; }
   </style>
 </head>
 <body class="h-full flex flex-col">
 
   <!-- Header -->
-  <header class="iowa-gradient shadow-lg">
+  <header class="iowa-gradient shadow-lg border-b-4 gold-accent">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-3">
       <div class="w-10 h-10 bg-iowa-gold rounded-full flex items-center justify-center flex-shrink-0">
-        <span class="text-black font-black text-lg">🏀</span>
+        <span class="text-iowa-black font-black text-lg">🏀</span>
       </div>
       <div>
         <h1 class="text-white text-xl font-black tracking-tight leading-none">
