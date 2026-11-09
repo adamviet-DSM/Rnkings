@@ -158,3 +158,22 @@ Rankings update automatically on the next page load — no extra step needed.
 ## Step 8 — Done
 
 Confirm: how many games were imported, which events, and that the folder was archived.
+
+---
+
+## Corrections after import
+
+The site groups games by team **name**, so each club+grade needs its own name
+(e.g. `Unite 4th`). A team that played up in a higher bracket can end up under the
+wrong grade. Both tools dry-run by default; add `--commit` to write.
+
+- **Split team is really one team** (e.g. 6th-grade team also listed as `X 7th`):
+  ```bash
+  uv run python scripts/merge_team.py "515 Hoops 7th" "515 Hoops 6th"
+  ```
+  Moves every game to the second name and deletes the first from Teams.
+- **Team is listed under the wrong grade** and has no row at its real grade:
+  ```bash
+  uv run python scripts/regrade_team.py "Chaos Black 7th" "Chaos Black 6th" 6th
+  ```
+  Renames the team and its games and sets its Age Group.
