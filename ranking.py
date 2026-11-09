@@ -9,10 +9,19 @@ opponent_quality is a value from 0.0 (worst/unknown) to 1.0 (top-ranked).
 A loss to the #1 team incurs zero penalty; a loss to the last-place team
 incurs the full penalty. The quality values are recalculated each iteration
 until convergence.
+
+Playing up (opponent is in a higher grade, from the Teams sheet Age Group):
+  - Win:  × (1 + PLAY_UP_WIN_BONUS × grades_up)
+  - Loss: opponent_quality is at least PLAY_UP_LOSS_CREDIT × grades_up
+          (capped at 1.0), so the penalty is at most halved per grade up.
+Older opponents aren't in the grade being ranked, so without this they would
+count as quality 0.0 and a loss to them would get the full penalty.
 """
 
 WIN_BASE = 100.0
 LOSS_BASE = 35.0
+PLAY_UP_WIN_BONUS = 0.25
+PLAY_UP_LOSS_CREDIT = 0.5
 ITERATIONS = 25
 MIN_GAMES = 2
 
@@ -67,13 +76,22 @@ def build_team_meta(teams_raw: list[dict]) -> dict[str, list[dict]]:
     return meta
 
 
-def _game_score(result: str, tier: str, bracket: str, opp_quality: float) -> float:
+def grade_number(age_group: str) -> int | None:
+    """'6th' → 6; anything unparseable ('?', '') → None."""
+    digits = "".join(ch for ch in str(age_group) if ch.isdigit())
+    return int(digits) if digits else None
+
+
+def _game_score(result: str, tier: str, bracket: str, opp_quality: float,
+                grades_up: int = 0) -> float:
     tier_m = TIER_MULT.get(tier, 1.0)
     bracket_m = BRACKET_MULT.get(bracket, 1.0)
+    up = max(grades_up, 0)
     if result == "W":
-        return WIN_BASE * tier_m * bracket_m
-    # Loss — penalty is reduced when the opponent is highly ranked
-    return -(LOSS_BASE * tier_m * bracket_m * (1.0 - opp_quality))
+        return WIN_BASE * tier_m * bracket_m * (1.0 + PLAY_UP_WIN_BONUS * up)
+    # Loss — penalty is reduced when the opponent is highly ranked or older
+    quality = max(opp_quality, min(1.0, PLAY_UP_LOSS_CREDIT * up))
+    return -(LOSS_BASE * tier_m * bracket_m * (1.0 - quality))
 
 
 def calculate_rankings(
@@ -186,12 +204,23 @@ def calculate_rankings(
     # opponent_quality[team] = 0.0 (worst) … 1.0 (best)
     opp_quality: dict[str, float] = {}
 
+    def team_grade(name: str) -> int | None:
+        rows = teams_meta.get(name, [])
+        return grade_number(rows[0].get("Age Group", "")) if rows else None
+
+    # How many grades above the team each opponent is (0 if unknown or not older)
+    for team, games in eligible.items():
+        mine = grade_number(resolve_meta(team).get("Age Group", ""))
+        for g in games:
+            theirs = team_grade(g["opponent"])
+            g["grades_up"] = max(theirs - mine, 0) if mine and theirs else 0
+
     for _ in range(iterations):
         scores: dict[str, float] = {}
         for team, games in eligible.items():
             total = sum(
                 _game_score(g["result"], g["tier"], g["bracket"],
-                            opp_quality.get(g["opponent"], 0.0))
+                            opp_quality.get(g["opponent"], 0.0), g["grades_up"])
                 for g in games
             )
             scores[team] = total
