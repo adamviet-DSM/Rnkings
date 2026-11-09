@@ -1,6 +1,6 @@
 # Import Weekend Scores
 
-Import basketball scores from screenshots in `/inbox/$ARGUMENTS/`.
+Import basketball scores from screenshots or PDFs in `/inbox/$ARGUMENTS/`.
 
 The argument is the Saturday date of the weekend, e.g. `/import-weekend 2026-11-08`.
 
@@ -23,16 +23,27 @@ Default values when not specified anywhere:
 
 ## Step 2 — Extract games from each screenshot
 
-For each event subfolder, list every image file (.png, .jpg, .jpeg, .PNG, .JPG, .HEIC)
-inside it. Use the folder name as the `event_name` for all games in that subfolder.
+For each event subfolder, list every image or PDF file (.png, .jpg, .jpeg, .PNG, .JPG,
+.HEIC, .pdf, .PDF) inside it. Use the folder name as the `event_name` for all games in
+that subfolder.
 
-For each image, use the Read tool to view it, then extract every **completed game**
-(final scores only). Skip: scheduled games, forfeits (unless clearly marked as completed),
-in-progress games.
+For each file, use the Read tool to view it (for PDFs over 10 pages, read in page
+ranges), then extract every **completed game** (final scores only). Skip: scheduled
+games, forfeits (unless clearly marked as completed), in-progress games.
 
-**Grade and gender from filename**: the screenshot filename encodes the grade and gender
+**Grade and gender from filename**: the filename encodes the grade and gender
 for all teams in that file — e.g. `8th girls.png` means every team in that screenshot
 is 8th-grade Girls. Mixed brackets (`5th:6th Boys.png`) hold teams from both grades.
+
+**Whole-tournament files** (one PDF or screenshot covering several grades): take each
+game's grade and gender from the division heading it sits under in the file, and set
+`source_screenshot` to `"<Event Name>/<grade> <gender>"` (e.g.
+`"Fall Frenzy 2026/6th boys"`) so later steps can read the grade. If a game's division
+isn't clear, ask the user rather than guessing.
+
+**One name per club and grade**: the site groups games by team name. If the same team
+name shows up in more than one grade in this batch, append the grade
+(`Unite` → `Unite 4th`, `Unite 6th`) unless the user says it's one team playing up.
 
 For each completed game, record:
 ```
