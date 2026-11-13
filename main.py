@@ -9,6 +9,7 @@ from ranking import (
     get_available_seasons,
     get_filter_options,
     build_team_meta,
+    season_cycle,
 )
 from sheets import get_teams, get_games
 
@@ -37,6 +38,8 @@ async def index(
         filter_opts = get_filter_options(teams_raw)
         teams_meta = build_team_meta(teams_raw)
 
+        # Old links may say 'Fall 2026'; seasons are Fall–Summer cycles ('2026-27')
+        season = season_cycle(season) if season else season
         # Default to most recent season
         if not season and seasons:
             season = seasons[0]

@@ -230,11 +230,15 @@ def cmd_check(folder_date: str) -> None:
 
         if not g.get("game_date"):
             issues.append("Missing: game_date")
-        if not g.get("season"):
+        # Season = the Fall–Summer cycle ('2026-27'), from the game date when possible
+        _sys_path_insert()
+        from ranking import cycle_for_date, season_cycle
+        season = cycle_for_date(str(g.get("game_date", ""))) or season_cycle(str(g.get("season", "")))
+        if not season:
             issues.append("Missing: season")
 
         row = {
-            "Season": g.get("season", ""),
+            "Season": season,
             "Home Team Name": home_matched or home_raw,
             "Away Team Name": away_matched or away_raw,
             "Home Score": home_score,

@@ -37,26 +37,62 @@ BRACKET_MULT: dict[str, float] = {
 }
 
 
-def season_sort_key(season: str) -> tuple[int, int]:
-    """Return a (year, month) sort key so seasons order chronologically."""
-    season = season.strip()
-    month_map = {"Spring": 3, "Summer": 6, "Fall": 8, "Winter": 11}
-    for name, month in month_map.items():
-        if season.startswith(name):
-            rest = season[len(name):].strip()
-            if "-" in rest:
-                # e.g. "24-25" → start year 2024
-                year_str = rest.split("-")[0].strip()
-                year = 2000 + int(year_str) if len(year_str) == 2 else int(year_str)
-            else:
-                year = int(rest)
-            return (year, month)
-    return (0, 0)
+CYCLE_START_MONTH = 8  # a season cycle runs August (Fall) through July (Summer)
+
+
+def _year(text: str) -> int | None:
+    text = text.strip()
+    if not text.isdigit():
+        return None
+    return 2000 + int(text) if len(text) == 2 else int(text)
+
+
+def season_cycle(season: str) -> str:
+    """
+    Normalize any season label to its Fall–Summer cycle, e.g. '2026-27'.
+    Records and rankings reset each cycle.
+      'Fall 2026'    → '2026-27'      'Winter 25-26' → '2025-26'
+      'Spring 2027'  → '2026-27'      'Summer 2027'  → '2026-27'
+      '2026-27'      → '2026-27'      unrecognized   → returned unchanged
+    """
+    s = season.strip()
+    parts = s.split()
+    if len(parts) == 1 and "-" in s:                       # '2026-27'
+        start = _year(s.split("-")[0])
+        return f"{start}-{str(start + 1)[-2:]}" if start else s
+    if len(parts) == 2:
+        name, rest = parts[0].title(), parts[1]
+        start = _year(rest.split("-")[0])
+        if start is None:
+            return s
+        if name == "Fall" or (name == "Winter" and "-" in rest):
+            pass                                            # starts the cycle
+        elif name in ("Winter", "Spring", "Summer"):
+            start -= 1                                      # 'Spring 2027' → 2026-27
+        else:
+            return s
+        return f"{start}-{str(start + 1)[-2:]}"
+    return s
+
+
+def cycle_for_date(date_str: str) -> str | None:
+    """'2026-11-07' → '2026-27'; '2027-06-01' → '2026-27'."""
+    try:
+        y, m = int(date_str[:4]), int(date_str[5:7])
+    except (ValueError, IndexError):
+        return None
+    start = y if m >= CYCLE_START_MONTH else y - 1
+    return f"{start}-{str(start + 1)[-2:]}"
+
+
+def season_sort_key(season: str) -> int:
+    """Sort key: the cycle's starting year."""
+    return _year(season_cycle(season).split("-")[0]) or 0
 
 
 def get_available_seasons(games: list[dict]) -> list[str]:
-    """Return seasons present in the games data, newest first."""
-    seasons = {g.get("Season", "").strip() for g in games if g.get("Season", "").strip()}
+    """Return season cycles present in the games data, newest first."""
+    seasons = {season_cycle(str(g.get("Season", ""))) for g in games if str(g.get("Season", "")).strip()}
     return sorted(seasons, key=season_sort_key, reverse=True)
 
 
@@ -147,7 +183,7 @@ def calculate_rankings(
     # ── 2. Filter games to the selected season ───────────────────────────────
     season_games = [
         g for g in games_raw
-        if str(g.get("Season", "")).strip() == season
+        if season_cycle(str(g.get("Season", ""))) == season_cycle(season)
     ]
 
     # ── 3. Build per-team game records ───────────────────────────────────────

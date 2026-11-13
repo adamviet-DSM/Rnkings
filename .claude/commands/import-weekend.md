@@ -55,7 +55,7 @@ away_score      integer string, or "?" if unreadable
 event_name      tournament / event name
 event_tier      National | Regional | Local  (from notes or default)
 bracket_level   Gold | Silver               (from notes or default)
-season          e.g. "Fall 2026"
+season          Fall–Summer cycle, e.g. "2026-27" (set automatically from game_date)
 source_screenshot  relative path from inbox/YYYY-MM-DD (e.g. "Event Name/photo.png")
 ```
 
@@ -70,7 +70,7 @@ Write all extracted games to `/inbox/$ARGUMENTS/extracted-games.json`:
 ```json
 [
   {
-    "season": "Fall 2026",
+    "season": "2026-27",
     "game_date": "2026-11-08",
     "home_team": "Exact Team Name From Screenshot",
     "away_team": "Exact Team Name From Screenshot",
