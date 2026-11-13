@@ -1,6 +1,6 @@
 """Iowa Basketball Rankings — FastAPI application."""
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
@@ -12,12 +12,18 @@ from ranking import (
     season_cycle,
 )
 from sheets import get_teams, get_games
+import tournaments
 
 app = FastAPI(title="Iowa Basketball Rankings")
 templates = Jinja2Templates(directory="templates")
+templates.env.filters["date_range"] = tournaments.date_range
+templates.env.filters["money"] = tournaments.money
+templates.env.filters["short_date"] = tournaments.short_date
+templates.env.filters["grade_label"] = tournaments.grade_label
 
 
 @app.get("/", response_class=HTMLResponse)
+@app.get("/rankings", response_class=HTMLResponse)
 async def index(
     request: Request,
     season: str = "",
@@ -78,6 +84,40 @@ async def index(
             "error": error,
         },
     )
+
+
+@app.get("/tournaments", response_class=HTMLResponse)
+def tournament_search(
+    request: Request,
+    zip: str = "",
+    lat: str = "",
+    lng: str = "",
+    radius: str = "",
+    grade: str = "",
+    when: str = "",
+    max_fee: str = "",
+    open: str = "",
+):
+    ctx = {"request": request, "error": None, "results": [], "place_error": None,
+           "has_origin": False, "radius": 100,
+           "f": {"zip": zip, "lat": lat, "lng": lng, "radius": radius, "grade": grade,
+                 "when": when, "max_fee": max_fee, "open": open},
+           "when_options": tournaments.WHEN_OPTIONS, "fee_options": tournaments.FEE_OPTIONS,
+           "radius_options": tournaments.RADIUS_OPTIONS, "grades": tournaments.GRADES}
+    try:
+        ctx.update(tournaments.search(zip, lat, lng, radius, grade, when, max_fee,
+                                      open_only=bool(open)))
+    except Exception:
+        ctx["error"] = "Tournament listings are temporarily unavailable. Please try again soon."
+    return templates.TemplateResponse("tournaments.html", ctx)
+
+
+@app.get("/tournaments/{tid}", response_class=HTMLResponse)
+def tournament_detail(request: Request, tid: str):
+    t = tournaments.get(tid)
+    if not t:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+    return templates.TemplateResponse("tournament.html", {"request": request, "t": t})
 
 
 if __name__ == "__main__":

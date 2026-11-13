@@ -4,7 +4,7 @@
     {
       "name": "team-ranker",
       "runtimeExecutable": "uv",
-      "runtimeArgs": ["run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"],
+      "runtimeArgs": ["run", "python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"],
       "port": 8000,
       "cwd": "/Users/adamviet/Desktop/Team-Ranker"
     }

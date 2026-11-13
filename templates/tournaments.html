@@ -1,0 +1,129 @@
+{% extends "site.html" %}
+{% set nav = "tournaments" %}
+
+{% block style %}
+  .filters { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 12px; display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+  .filters .full { grid-column: 1 / -1; }
+  .loc { display: flex; gap: 8px; }
+  .loc input { flex: 1; min-width: 0; }
+  input, select { width: 100%; font: inherit; font-size: 16px; padding: 9px 10px;
+    border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--text); }
+  .check { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+  .check input { width: 20px; height: 20px; }
+  .count { margin: 16px 2px 8px; font-weight: 700; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 14px; margin-bottom: 12px; }
+  .card h2 { font-size: 17px; margin: 0 0 4px; line-height: 1.25; }
+  .card h2 a { text-decoration: none; }
+  .when { font-weight: 700; color: var(--gold-dark); }
+  .facts { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+  .chip { background: var(--gold-soft); border-radius: 999px; padding: 3px 10px; font-size: 13px;
+    font-weight: 600; }
+  .actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .status { font-size: 13px; font-weight: 700; }
+  .open { color: var(--good); } .closed { color: var(--bad); }
+  .empty { text-align: center; padding: 32px 12px; }
+  .note { background: #FDECEA; color: var(--bad); border-radius: 10px; padding: 10px 12px;
+    margin-top: 12px; font-size: 14px; }
+{% endblock %}
+
+{% block content %}
+<form method="get" class="filters" id="f">
+  <div class="full loc">
+    <input name="zip" inputmode="numeric" pattern="5[0-2][0-9]{3}" maxlength="5"
+           placeholder="Iowa ZIP code" value="{{ f.zip }}" aria-label="ZIP code" />
+    <input type="hidden" name="lat" value="{{ f.lat if not f.zip }}" />
+    <input type="hidden" name="lng" value="{{ f.lng if not f.zip }}" />
+    <button type="button" class="btn ghost" id="near">📍 Near me</button>
+  </div>
+  <select name="radius" aria-label="Distance">
+    {% for r in radius_options %}
+    <option value="{{ r }}" {{ 'selected' if (f.radius or '100') == r|string }}>Within {{ r }} mi</option>
+    {% endfor %}
+  </select>
+  <select name="grade" aria-label="Grade">
+    <option value="">All grades</option>
+    {% for g in grades %}
+    <option value="{{ g }}" {{ 'selected' if f.grade == g|string }}>{{ g }}{{ 'rd' if g == 3 else 'th' }} grade</option>
+    {% endfor %}
+  </select>
+  <select name="when" aria-label="When">
+    {% for v, label in when_options %}
+    <option value="{{ v }}" {{ 'selected' if f.when == v }}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <select name="max_fee" aria-label="Entry fee">
+    {% for v, label in fee_options %}
+    <option value="{{ v }}" {{ 'selected' if f.max_fee == v }}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <label class="check full">
+    <input type="checkbox" name="open" value="1" {{ 'checked' if f.open }} />
+    Registration still open
+  </label>
+  <noscript><button class="btn full">Search</button></noscript>
+</form>
+
+{% if place_error %}<div class="note">{{ place_error }}</div>{% endif %}
+{% if error %}<div class="note">{{ error }}</div>{% endif %}
+
+{% if not error %}
+<p class="count">
+  {{ results|length }} tournament{{ '' if results|length == 1 else 's' }}
+  {% if has_origin %}<span class="muted small">within {{ radius }} miles</span>{% endif %}
+</p>
+
+{% for t in results %}
+<article class="card">
+  <div class="when">{{ t|date_range }}</div>
+  <h2><a href="/tournaments/{{ t.id }}">{{ t.name }}</a></h2>
+  <div class="muted">
+    {{ t.city }}{% if t.miles is not none %} · {{ t.miles|round|int }} mi{% endif %}
+    {% if t.venue %} · {{ t.venue }}{% endif %}
+  </div>
+  <div class="facts">
+    <span class="chip">{{ t|grade_label }}</span>
+    {% if t.gender != 'Boys' %}<span class="chip">{{ t.gender }}</span>{% endif %}
+    {% if t.entry_fee is not none %}<span class="chip">{{ t.entry_fee|money }} / team</span>{% endif %}
+    {% if t.gate_fee_adult is not none %}<span class="chip">Gate {{ t.gate_fee_adult|money }}</span>{% endif %}
+  </div>
+  <div class="actions">
+    {% if t.status == 'cancelled' %}
+      <span class="status closed">Cancelled</span>
+    {% elif t.reg_open %}
+      <a class="btn" href="{{ t.register_url }}" target="_blank" rel="noopener nofollow">Register ↗</a>
+      {% if t.registration_deadline %}<span class="status open">Register by {{ t.registration_deadline|short_date }}</span>{% endif %}
+    {% else %}
+      <span class="status closed">Registration closed</span>
+    {% endif %}
+    <a class="small muted" href="/tournaments/{{ t.id }}">Details</a>
+  </div>
+</article>
+{% else %}
+<div class="empty card">
+  <p><strong>No tournaments match yet.</strong></p>
+  <p class="muted small">Try a wider distance, a different grade, or “All upcoming”.</p>
+</div>
+{% endfor %}
+{% endif %}
+
+<script>
+  const form = document.getElementById('f');
+  form.addEventListener('change', e => {
+    if (e.target.name === 'zip') { form.lat.value = ''; form.lng.value = ''; }
+    if (e.target.name !== 'zip' || e.target.value.length === 5 || !e.target.value) form.submit();
+  });
+  form.zip.addEventListener('input', e => { if (e.target.value.length === 5) form.requestSubmit(); });
+  document.getElementById('near').addEventListener('click', () => {
+    if (!navigator.geolocation) { alert('Location is not available on this device.'); return; }
+    navigator.geolocation.getCurrentPosition(p => {
+      // Rounded to ~7 miles: enough for distance, without pinpointing anyone.
+      form.lat.value = p.coords.latitude.toFixed(1);
+      form.lng.value = p.coords.longitude.toFixed(1);
+      form.zip.value = '';
+      form.submit();
+    }, () => alert('Could not get your location. Enter a ZIP code instead.'));
+  });
+</script>
+{% endblock %}

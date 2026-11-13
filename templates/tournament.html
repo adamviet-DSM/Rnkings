@@ -1,0 +1,67 @@
+{% extends "site.html" %}
+{% set nav = "tournaments" %}
+{% block title %}{{ t.name }} — {{ t.city }}, IA{% endblock %}
+{% block description %}{{ t.name }}: {{ t|date_range }} in {{ t.city }}, Iowa. Grades {{ t.grades }}.{% endblock %}
+
+{% block style %}
+  .back { display: inline-block; margin-bottom: 12px; text-decoration: none; font-weight: 600; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+  h1 { font-size: 22px; line-height: 1.2; margin: 4px 0 6px; }
+  .when { font-weight: 700; color: var(--gold-dark); }
+  dl { display: grid; grid-template-columns: 7.5em 1fr; gap: 10px 12px; margin: 18px 0; }
+  dt { color: var(--muted); font-size: 14px; }
+  dd { margin: 0; }
+  .cta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  .status { font-weight: 700; font-size: 14px; }
+  .open { color: var(--good); } .closed { color: var(--bad); }
+{% endblock %}
+
+{% block content %}
+<a class="back muted" href="/tournaments">‹ All tournaments</a>
+<article class="card">
+  <div class="when">{{ t|date_range }}</div>
+  <h1>{{ t.name }}</h1>
+  <div class="muted">{{ t.city }}, {{ t.state }}{% if t.organizer %} · {{ t.organizer }}{% endif %}</div>
+
+  <div class="cta" style="margin-top:14px">
+    {% if t.status == 'cancelled' %}
+      <span class="status closed">Cancelled</span>
+    {% elif t.reg_open %}
+      <a class="btn" href="{{ t.register_url }}" target="_blank" rel="noopener nofollow">Register ↗</a>
+      {% if t.registration_deadline %}<span class="status open">Register by {{ t.registration_deadline|short_date }}</span>{% endif %}
+    {% else %}
+      <span class="status closed">Registration closed</span>
+    {% endif %}
+  </div>
+
+  <dl>
+    <dt>Grades</dt><dd>{{ t|grade_label }}{% if t.gender != 'Both' %} · {{ t.gender }}{% else %} · Boys &amp; Girls{% endif %}</dd>
+    {% if t.brackets %}<dt>Brackets</dt><dd>{{ t.brackets }}</dd>{% endif %}
+    <dt>Where</dt>
+    <dd>
+      {% if t.venue %}{{ t.venue }}<br>{% endif %}{{ t.city }}, {{ t.state }} {{ t.zip or '' }}<br>
+      <a class="small" target="_blank" rel="noopener"
+         href="https://www.google.com/maps/search/?api=1&query={{ (((t.venue ~ ', ') if t.venue else '') ~ t.city ~ ', ' ~ t.state) | urlencode }}">Open in Maps ↗</a>
+    </dd>
+    <dt>Entry fee</dt>
+    <dd>{{ (t.entry_fee|money ~ ' per team') if t.entry_fee is not none else 'Not listed' }}
+        {% if t.entry_fee_notes %}<br><span class="small muted">{{ t.entry_fee_notes }}</span>{% endif %}</dd>
+    <dt>Gate fee</dt>
+    <dd>
+      {% if t.gate_fee_adult is not none %}Adults {{ t.gate_fee_adult|money }}{% endif %}
+      {% if t.gate_fee_student is not none %}{{ ' · ' if t.gate_fee_adult is not none }}Students {{ t.gate_fee_student|money }}{% endif %}
+      {% if t.gate_fee_adult is none and t.gate_fee_student is none %}Not listed{% endif %}
+      {% if t.gate_fee_notes %}<br><span class="small muted">{{ t.gate_fee_notes }}</span>{% endif %}
+    </dd>
+    {% if t.registration_deadline %}<dt>Deadline</dt><dd>{{ t.registration_deadline|short_date }}, {{ t.registration_deadline.year }}</dd>{% endif %}
+  </dl>
+
+  <p class="small muted">
+    Source:
+    {% if t.source_url.startswith('http') %}
+      <a href="{{ t.source_url }}" target="_blank" rel="noopener nofollow">{{ t.source_url.split('/')[2] }} ↗</a>
+    {% else %}{{ t.source_url }}{% endif %}
+    {% if t.last_verified %} · Checked {{ t.last_verified|short_date }}{% endif %}
+  </p>
+</article>
+{% endblock %}
